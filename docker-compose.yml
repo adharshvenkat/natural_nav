@@ -1,0 +1,38 @@
+services:
+  naturalnav:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: naturalnav:latest
+    container_name: naturalnav
+
+    # ── LLM configuration ────────────────────────────────────────────────────
+    environment:
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-claude-sonnet-4-6}
+      # X11 forwarding — lets Gazebo render on the host display
+      - DISPLAY=${DISPLAY}
+      - TURTLEBOT3_MODEL=burger
+
+    # ── Volume mounts ─────────────────────────────────────────────────────────
+    volumes:
+      # X11 socket — required for Gazebo GUI
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      # Model weights cache — avoids re-downloading on every container start
+      - naturalnav_weights:/root/.cache/naturalnav
+
+    # ── Networking ────────────────────────────────────────────────────────────
+    network_mode: host
+
+    # ── Runtime ───────────────────────────────────────────────────────────────
+    privileged: false
+    restart: unless-stopped
+
+    stdin_open: true
+    tty: true
+
+# Named volume for model weights (persists across container restarts)
+volumes:
+  naturalnav_weights:
