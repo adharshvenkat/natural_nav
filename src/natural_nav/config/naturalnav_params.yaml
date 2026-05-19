@@ -1,0 +1,16 @@
+llm_planner:
+  ros__parameters:
+    llm_provider: anthropic
+    llm_model: claude-sonnet-4-6
+
+semantic_detector:
+  ros__parameters:
+    clip_model: ViT-B/32
+    gdino_box_threshold: 0.35
+    gdino_text_threshold: 0.25
+    device: cpu
+
+fleet_orchestrator:
+  ros__parameters:
+    max_retries: 2
+    nav_timeout_sec: 60.0

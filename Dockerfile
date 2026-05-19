@@ -3,7 +3,7 @@
 # Installs build tools, compiles GroundingDINO C++ extensions, builds the
 # natural_nav ROS2 package. Nothing from this stage leaks into runtime.
 # ─────────────────────────────────────────────────────────────────────────────
-FROM ros:jazzy-desktop AS builder
+FROM osrf/ros:jazzy-desktop AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -21,11 +21,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Python ML dependencies
-# numpy<2 required: system matplotlib compiled against NumPy 1.x
+# Step 1: torch must be installed before GroundingDINO — its setup.py imports torch
 RUN pip install --no-cache-dir --break-system-packages \
+    torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+# Step 2: CLIP, GroundingDINO, and LLM clients (torch now available)
+# --ignore-installed: numpy is apt-managed in this image, pip cannot uninstall it
+# so we install our version alongside it without removing the system one
+RUN pip install --no-cache-dir --break-system-packages --ignore-installed numpy \
     "numpy<2" \
-    torch torchvision --index-url https://download.pytorch.org/whl/cpu \
     "git+https://github.com/openai/CLIP.git" \
     "git+https://github.com/IDEA-Research/GroundingDINO.git" \
     anthropic \
@@ -35,7 +39,7 @@ RUN pip install --no-cache-dir --break-system-packages \
 WORKDIR /naturalnav_ws
 COPY src/ src/
 RUN . /opt/ros/jazzy/setup.sh && \
-    colcon build --symlink-install \
+    colcon build \
         --cmake-args -DCMAKE_BUILD_TYPE=Release \
         --packages-select natural_nav
 
@@ -45,7 +49,7 @@ RUN . /opt/ros/jazzy/setup.sh && \
 # Clean base — copies only built artifacts from builder.
 # No compilers, no pip cache, no build-essential.
 # ─────────────────────────────────────────────────────────────────────────────
-FROM ros:jazzy-desktop AS runtime
+FROM osrf/ros:jazzy-desktop AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
 
