@@ -41,5 +41,99 @@
       <direction>-0.5 0.1 -0.9</direction>
     </light>
 
+    <!-- ── Warehouse artifacts ───────────────────────────────────────────────
+         Positioned to match location->pose map in fleet_orchestrator.py so
+         navigation targets align with visible, detectable objects. -->
+
+    <!-- shelf_row_7 : red box -->
+    <model name="shelf_red">
+      <static>true</static>
+      <pose>3.0 1.0 0.4 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.6 1.2 0.8</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.6 1.2 0.8</size></box></geometry>
+          <material>
+            <ambient>0.7 0.1 0.1 1</ambient>
+            <diffuse>0.9 0.1 0.1 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- shelf_row_3 : blue box -->
+    <model name="shelf_blue">
+      <static>true</static>
+      <pose>2.0 -2.0 0.4 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.6 1.2 0.8</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.6 1.2 0.8</size></box></geometry>
+          <material>
+            <ambient>0.1 0.1 0.7 1</ambient>
+            <diffuse>0.1 0.1 0.9 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- storage_area : yellow cardboard-like box -->
+    <model name="storage_box">
+      <static>true</static>
+      <pose>-2.0 2.0 0.3 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.6 0.6 0.6</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.6 0.6 0.6</size></box></geometry>
+          <material>
+            <ambient>0.75 0.6 0.3 1</ambient>
+            <diffuse>0.85 0.7 0.4 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- workstation_3 : table (thin top + 4 legs simplified as a slab) -->
+    <model name="workstation_table">
+      <static>true</static>
+      <pose>4.0 -1.0 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>1.2 0.8 0.05</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>1.2 0.8 0.05</size></box></geometry>
+          <material>
+            <ambient>0.4 0.25 0.1 1</ambient>
+            <diffuse>0.55 0.35 0.15 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- landmark : barrel (cylinder) -->
+    <model name="barrel">
+      <static>true</static>
+      <pose>-1.0 -2.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><cylinder><radius>0.3</radius><length>1.0</length></cylinder></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.3</radius><length>1.0</length></cylinder></geometry>
+          <material>
+            <ambient>0.2 0.5 0.2 1</ambient>
+            <diffuse>0.2 0.7 0.2 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
   </world>
 </sdf>
