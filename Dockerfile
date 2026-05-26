@@ -33,7 +33,8 @@ RUN pip install --no-cache-dir --break-system-packages --ignore-installed numpy 
     "git+https://github.com/openai/CLIP.git" \
     "git+https://github.com/IDEA-Research/GroundingDINO.git" \
     anthropic \
-    openai
+    openai \
+    ollama
 
 # Build the natural_nav ROS2 package
 WORKDIR /naturalnav_ws

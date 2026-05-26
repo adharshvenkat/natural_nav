@@ -9,9 +9,9 @@ services:
 
     # ── LLM configuration ────────────────────────────────────────────────────
     environment:
-      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
-      - LLM_API_KEY=${LLM_API_KEY}
-      - LLM_MODEL=${LLM_MODEL:-claude-sonnet-4-6}
+      - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
+      - LLM_MODEL=${LLM_MODEL:-qwen2.5:3b}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://localhost:11434}
       # X11 forwarding — lets Gazebo render on the host display
       - DISPLAY=${DISPLAY}
       - TURTLEBOT3_MODEL=waffle
@@ -48,6 +48,24 @@ services:
     stdin_open: true
     tty: true
 
-# Named volume for model weights (persists across container restarts)
+  # ── Local LLM server (Ollama) ─────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    network_mode: host
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+
+# Named volumes (persist across container restarts)
 volumes:
   naturalnav_weights:
+  ollama_models:

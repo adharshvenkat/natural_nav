@@ -3,9 +3,10 @@ Provider-agnostic LLM client. Returns a callable that takes a system prompt and
 user message, and returns the model's text response.
 
 Configured via environment / ROS params:
-  LLM_PROVIDER  — 'anthropic' or 'openai'
-  LLM_API_KEY   — API key for the chosen provider
-  LLM_MODEL     — model name (e.g. claude-sonnet-4-6, gpt-4o)
+  LLM_PROVIDER  — 'anthropic', 'openai', or 'ollama'
+  LLM_API_KEY   — API key (not needed for ollama)
+  LLM_MODEL     — model name (e.g. claude-sonnet-4-6, gpt-4o, qwen2.5:3b)
+  OLLAMA_HOST   — ollama server URL (default http://localhost:11434)
 """
 
 from __future__ import annotations
@@ -59,21 +60,47 @@ class OpenAIClient:
         return resp.choices[0].message.content
 
 
+class OllamaClient:
+    """Local LLM via Ollama. No API key required. Expects model to support JSON."""
+
+    def __init__(self, model: str, host: str):
+        import ollama
+        self._client = ollama.Client(host=host)
+        self._model = model
+
+    def complete(self, system_prompt: str, user_message: str) -> str:
+        resp = self._client.chat(
+            model=self._model,
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': user_message},
+            ],
+            format='json',
+            options={'temperature': 0.2},
+        )
+        return resp['message']['content']
+
+
 def get_client(
     provider: str | None = None,
     api_key: str | None = None,
     model: str | None = None,
 ) -> LLMClient:
     """Factory: build an LLM client from explicit args or environment variables."""
-    provider = (provider or os.environ.get('LLM_PROVIDER', 'anthropic')).lower()
+    provider = (provider or os.environ.get('LLM_PROVIDER', 'ollama')).lower()
     api_key = api_key or os.environ.get('LLM_API_KEY', '')
     model = model or os.environ.get('LLM_MODEL', '')
 
+    if provider == 'ollama':
+        host = os.environ.get('OLLAMA_HOST', 'http://localhost:11434')
+        return OllamaClient(model or 'qwen2.5:3b', host)
+
     if not api_key:
-        raise ValueError('LLM_API_KEY not set — cannot create LLM client')
+        raise ValueError(f'LLM_API_KEY not set — required for provider {provider!r}')
 
     if provider == 'anthropic':
         return AnthropicClient(api_key, model or 'claude-sonnet-4-6')
     if provider == 'openai':
         return OpenAIClient(api_key, model or 'gpt-4o')
-    raise ValueError(f'Unknown LLM_PROVIDER: {provider!r} (expected anthropic or openai)')
+    raise ValueError(
+        f'Unknown LLM_PROVIDER: {provider!r} (expected anthropic, openai, or ollama)')
