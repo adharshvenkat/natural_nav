@@ -12,6 +12,8 @@ services:
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
       - LLM_MODEL=${LLM_MODEL:-qwen2.5:3b}
       - OLLAMA_HOST=${OLLAMA_HOST:-http://localhost:11434}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
       # X11 forwarding — lets Gazebo render on the host display
       - DISPLAY=${DISPLAY}
       - TURTLEBOT3_MODEL=waffle
@@ -25,8 +27,10 @@ services:
     volumes:
       # X11 socket — required for Gazebo GUI
       - /tmp/.X11-unix:/tmp/.X11-unix
-      # Model weights cache — avoids re-downloading on every container start
+      # Model weights cache — avoids re-downloading GroundingDINO weights
       - naturalnav_weights:/root/.cache/naturalnav
+      # Gazebo fuel cache — avoids re-downloading warehouse models every run
+      - gz_fuel_cache:/root/.gz/fuel
 
     # ── Networking ────────────────────────────────────────────────────────────
     network_mode: host
@@ -69,3 +73,4 @@ services:
 volumes:
   naturalnav_weights:
   ollama_models:
+  gz_fuel_cache:

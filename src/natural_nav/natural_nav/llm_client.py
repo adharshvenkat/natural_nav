@@ -42,9 +42,12 @@ class AnthropicClient:
 
 
 class OpenAIClient:
-    def __init__(self, api_key: str, model: str):
+    """OpenAI-compatible client. Works with OpenAI and any compatible API
+    (e.g. xAI Grok) via the base_url override."""
+
+    def __init__(self, api_key: str, model: str, base_url: str | None = None):
         from openai import OpenAI
-        self._client = OpenAI(api_key=api_key)
+        self._client = OpenAI(api_key=api_key, base_url=base_url or None)
         self._model = model
 
     def complete(self, system_prompt: str, user_message: str) -> str:
@@ -98,9 +101,16 @@ def get_client(
     if not api_key:
         raise ValueError(f'LLM_API_KEY not set — required for provider {provider!r}')
 
+    base_url = os.environ.get('LLM_BASE_URL', '') or None
+
     if provider == 'anthropic':
         return AnthropicClient(api_key, model or 'claude-sonnet-4-6')
     if provider == 'openai':
-        return OpenAIClient(api_key, model or 'gpt-4o')
+        return OpenAIClient(api_key, model or 'gpt-4o', base_url)
+    if provider == 'xai':
+        # xAI Grok exposes an OpenAI-compatible API
+        return OpenAIClient(api_key, model or 'grok-4.3',
+                            base_url or 'https://api.x.ai/v1')
     raise ValueError(
-        f'Unknown LLM_PROVIDER: {provider!r} (expected anthropic, openai, or ollama)')
+        f'Unknown LLM_PROVIDER: {provider!r} '
+        '(expected ollama, anthropic, openai, or xai)')
