@@ -13,8 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-colcon-common-extensions \
     ros-jazzy-navigation2 \
     ros-jazzy-nav2-bringup \
-    ros-jazzy-turtlebot3 \
-    ros-jazzy-turtlebot3-simulations \
+    ros-jazzy-nav2-minimal-tb4-sim \
+    ros-jazzy-nav2-minimal-tb4-description \
     ros-jazzy-cv-bridge \
     ros-jazzy-sensor-msgs \
     build-essential \
@@ -60,8 +60,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     ros-jazzy-navigation2 \
     ros-jazzy-nav2-bringup \
-    ros-jazzy-turtlebot3 \
-    ros-jazzy-turtlebot3-simulations \
+    ros-jazzy-nav2-minimal-tb4-sim \
+    ros-jazzy-nav2-minimal-tb4-description \
     ros-jazzy-cv-bridge \
     ros-jazzy-sensor-msgs \
     && rm -rf /var/lib/apt/lists/*

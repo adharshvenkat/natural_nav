@@ -16,7 +16,6 @@ services:
       - LLM_BASE_URL=${LLM_BASE_URL:-}
       # X11 forwarding — lets Gazebo render on the host display
       - DISPLAY=${DISPLAY}
-      - TURTLEBOT3_MODEL=waffle
       # NVIDIA GPU access for Gazebo sensor rendering
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all
