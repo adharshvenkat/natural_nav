@@ -50,6 +50,7 @@ RUN pip install --no-cache-dir --break-system-packages --ignore-installed numpy 
 RUN pip install --no-cache-dir --break-system-packages --ignore-installed scipy \
     --extra-index-url https://download.pytorch.org/whl/cu124 \
     "torch==2.6.*" "torchvision==0.21.*" \
+    "numpy<2" \
     "huggingface-hub<1.0" \
     "timm<=1.0.19" "addict" "yapf" "supervision" "pycocotools" "opencv-python" \
     "ftfy" "regex" "tqdm"

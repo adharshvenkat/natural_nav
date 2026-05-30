@@ -72,6 +72,9 @@ class SemanticDetectorNode(Node):
     def __init__(self):
         super().__init__('semantic_detector')
 
+        # NOTE: use_sim_time is implicitly declared by rclpy. Pass it on the
+        # CLI (--ros-args -p use_sim_time:=true) so get_clock() reflects
+        # Gazebo's /clock and TF lookups stay in the same timebase.
         self.declare_parameter('image_topic', '/rgbd_camera/image')
         self.declare_parameter('depth_topic', '/rgbd_camera/depth_image')
         self.declare_parameter('camera_info_topic', '/rgbd_camera/camera_info')
@@ -267,13 +270,17 @@ class SemanticDetectorNode(Node):
         intr: CameraIntrinsics,
         rgb_header,
     ):
-        # Look up the camera optical frame's transform to the map frame once,
-        # at the RGB image's timestamp.
+        # TF lookup at "latest available" via Time() (epoch zero). tf2_ros
+        # interprets a zero-stamp lookup as "give me the most recent transform"
+        # regardless of clock source. This sidesteps sim-time vs wall-time
+        # mismatches and the RGB-stamp-vs-buffer-stamp races we hit with the
+        # exact-time approach.
         camera_frame = rgb_header.frame_id
         try:
             tf = self._tf_buffer.lookup_transform(
                 self._map_frame, camera_frame,
-                rgb_header.stamp, timeout=rclpy.duration.Duration(seconds=0.1))
+                rclpy.time.Time(),
+                timeout=rclpy.duration.Duration(seconds=0.5))
         except TransformException as e:
             self.get_logger().warn(
                 f'TF lookup {camera_frame} -> {self._map_frame} failed: {e}')
