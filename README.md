@@ -1,66 +1,96 @@
 # NaturalNav
 
-**LLM-orchestrated semantic navigation for multi-robot fleets.**
+**Language-conditioned semantic navigation on a single mobile robot.**
 
-> "Inspect shelf row 7, deliver any flagged item to workstation 3, and alert me if the path is blocked."
+> *"Go inspect the shelf next to the pallet."*
 
-NaturalNav accepts natural language commands and autonomously decomposes them into a dynamic multi-robot task graph. Tasks are allocated based on robot availability and proximity — not fixed roles. If a robot fails, the LLM replans in real time. All running in a single `docker compose up`.
+NaturalNav takes a natural-language command, decomposes it with an LLM into a structured task graph, and dispatches navigation goals to a TurtleBot4 in a Gazebo warehouse — but task targets aren't hardcoded coordinates. They're resolved through an **open-vocabulary semantic map** the robot builds online from its RGBD camera using GroundingDINO. The whole stack runs in `docker compose up`.
+
+Mobile-robot project in a multi-modality portfolio focused on perception, planning, and reasoning.
+
+---
+
+## Status
+
+| Layer | State |
+|-------|-------|
+| Containerized stack (Docker + GPU, multi-stage build) | ✅ working |
+| Gazebo warehouse + TurtleBot4 + Nav2 + RViz | ✅ working |
+| LLM planner (xAI Grok / Ollama / Anthropic / OpenAI) | ✅ working |
+| Task executor (Nav2 action client + DAG + replan requests) | ✅ working |
+| In-memory semantic map (label → pose, JSON snapshots) | ✅ data structure ready |
+| Semantic detector (GroundingDINO + depth → map projection) | 🚧 in progress |
+| Replan loop wired end-to-end | ⏳ pending |
+| Demo video / GIF | ⏳ pending |
 
 ---
 
 ## Architecture
 
 ```
-Natural Language Command
-        │
-        ▼
-┌─────────────────────┐
-│     LLM Planner     │  command → structured task graph
-│                     │  considers robot state + proximity
-└────────┬────────────┘
-         │ /natural_nav/task_graph
-         ▼
-┌──────────────────────┐
-│  Fleet Orchestrator  │  Dispatches Nav2 goals per robot
-│                      │  Tracks availability + task state
-│                      │  LLM replanner on failure
-└────────┬─────────────┘
-         │ Nav2 actions
-    ┌────┴────┐
-    ▼         ▼
-┌────────┐ ┌────────┐
-│robot_1 │ │robot_2 │  TurtleBot3 (full capability)
-│        │ │        │  Camera + Nav2 per robot
-└───┬────┘ └───┬────┘
-    │           │
-    └─────┬─────┘
-          ▼
-┌──────────────────────┐
-│  Semantic Detector   │  CLIP + GroundingDINO
-│                      │  Subscribes to both robot cameras
-│                      │  Builds open-vocabulary semantic map
-└──────────────────────┘
+                      natural language command
+                                │
+                                │  /natural_nav/command
+                                ▼
+                      ┌──────────────────┐
+                      │   llm_planner    │  LLM → JSON task graph
+                      └────────┬─────────┘
+                               │  /natural_nav/task_graph
+                               ▼
+   /natural_nav/semantic_map  ┌──────────────────┐  /natural_nav/fleet_status
+   (label → pose, JSON)  ────►│  task_executor   │──────► (status snapshots)
+                              │                  │
+                              │  - walks DAG     │  /natural_nav/replan_request
+                              │  - resolves      │──────► (on UNRESOLVABLE)
+                              │    label via map │
+                              │  - dispatches    │
+                              │    Nav2 goals    │
+                              └────────┬─────────┘
+                                       │  /navigate_to_pose (action)
+                                       ▼
+                              ┌──────────────────┐
+                              │      Nav2        │  AMCL on warehouse map
+                              │ planner+ctrl+BT  │  → TurtleBot4 in Gazebo
+                              └──────────────────┘
+
+   RGB + depth + camera_info + TF        ┌──────────────────────┐
+   ─────────────────────────────────────►│  semantic_detector   │
+   from TB4's OAK-D camera               │                      │
+                                         │  GroundingDINO →     │
+                                         │  bbox+label → unproj │
+                                         │  pixel via depth →   │
+                                         │  TF to map frame →   │
+                                         │  semantic_map        │
+                                         └──────────┬───────────┘
+                                                    │
+                                                    │ /natural_nav/semantic_map
+                                                    └──────────► (feeds executor)
 ```
+
+Sim, Nav2, and RViz come from Nav2's `tb4_simulation_launch.py`. The perception and LLM nodes are layered on top.
+
+---
 
 ## Tech Stack
 
 | Component | Tool |
 |-----------|------|
-| Simulation | Gazebo Harmonic (via ros:jazzy-desktop) |
-| Robot model | TurtleBot3 (camera + Nav2, x2) |
-| Navigation | Nav2 (binary, ros-jazzy) |
-| Semantic perception | CLIP + GroundingDINO (CPU) |
-| LLM planner + replanner | Configurable (OpenAI / Anthropic / local) |
-| Containerization | Docker + Docker Compose (multi-stage build) |
-| ROS2 distribution | Jazzy |
+| Simulator | Gazebo Sim (Harmonic) via `nav2_minimal_tb4_sim` warehouse |
+| Robot | TurtleBot4 (OAK-D Pro RGBD camera + RPLidar) |
+| Navigation | Nav2 (AMCL + planner + controller + behavior tree) on pre-built warehouse map |
+| Perception | GroundingDINO (open-vocab detection) + CLIP (reserved for disambiguation) |
+| LLM | Provider-agnostic: xAI Grok 4.3 (default), Ollama qwen2.5:3b (local), Anthropic, OpenAI |
+| Containerization | Docker + Docker Compose, multi-stage build, NVIDIA Container Toolkit for sim rendering |
+| ROS 2 | Jazzy |
 
 ---
 
 ## Quick Start
 
 ### Prerequisites
-- Docker + Docker Compose
-- An LLM API key (see Configuration)
+- Linux host with an NVIDIA GPU (Gazebo sensor rendering uses it)
+- Docker + Docker Compose + NVIDIA Container Toolkit
+- An LLM API key (or use the bundled local Ollama)
 
 ### Run
 
@@ -68,108 +98,115 @@ Natural Language Command
 git clone https://github.com/adharshvenkat/natural_nav.git
 cd natural_nav
 
-export LLM_API_KEY=your-api-key-here
-export LLM_PROVIDER=anthropic   # or: openai
-docker compose up
+cp .env.example .env
+# edit .env — pick LLM_PROVIDER, paste your API key, etc.
+
+xhost +local:docker          # let the container draw on your X display
+docker compose up -d ollama  # start local LLM (skip if using a cloud provider)
+./scripts/setup_ollama.sh    # pull qwen2.5:3b into the ollama volume (one-time)
+
+docker compose run --rm --name nn naturalnav \
+  ros2 launch natural_nav simulation.launch.py
 ```
+
+Gazebo + RViz will open. In RViz, click **2D Pose Estimate** and place the robot pose roughly where it sits in Gazebo so AMCL localizes.
 
 ### Send a command
 
+In another terminal:
+
 ```bash
-# In a new terminal
-docker compose exec naturalnav \
+docker exec -it nn bash -c "source /opt/ros/jazzy/setup.bash && \
   ros2 topic pub --once /natural_nav/command std_msgs/msg/String \
-  '{"data": "Inspect shelf row 7 and deliver any flagged items to workstation 3"}'
+  '{data: \"Inspect the shelf and report what you see\"}'"
 ```
 
-### Watch the fleet status
+### Watch what's happening
 
 ```bash
-docker compose exec naturalnav \
-  ros2 topic echo /natural_nav/fleet_status
+docker exec -it nn bash -c "source /opt/ros/jazzy/setup.bash && \
+  ros2 topic echo /natural_nav/fleet_status"
 ```
 
 ---
 
-## Package Structure
+## Repository Layout
 
 ```
-src/natural_nav/
-├── natural_nav/
-│   ├── llm_planner.py        # LLM task decomposition node
-│   ├── semantic_detector.py  # CLIP + GroundingDINO perception node
-│   └── fleet_orchestrator.py # Nav2 dispatch + LLM failure recovery
-├── launch/
-│   └── naturalnav.launch.py  # Bringup launch file
-└── config/
-    └── naturalnav_params.yaml
-docker/
-└── entrypoint.sh             # Sources ROS2 before every container command
+natural_nav_ws/
+├── Dockerfile                 # Multi-stage: builder + runtime
+├── docker-compose.yml         # naturalnav + ollama services, GPU + X11
+├── .env.example               # LLM provider / model / API key template
+├── scripts/setup_ollama.sh    # Pull the local LLM into the ollama volume
+├── docker/entrypoint.sh       # Sources ROS2 + workspace on container start
+└── src/natural_nav/
+    ├── natural_nav/
+    │   ├── llm_client.py          # Provider-agnostic LLM factory (xai/ollama/anthropic/openai)
+    │   ├── llm_planner.py         # Command → task graph
+    │   ├── fleet_orchestrator.py  # Task executor (Nav2 dispatch + DAG walk)
+    │   ├── semantic_map.py        # In-memory label → pose store
+    │   └── semantic_detector.py   # GroundingDINO + depth projection (WIP)
+    ├── launch/
+    │   ├── simulation.launch.py   # Wraps nav2_bringup tb4_simulation_launch
+    │   └── naturalnav.launch.py   # Brings up perception + planner + executor
+    ├── config/naturalnav_params.yaml
+    └── worlds/naturalnav.world    # (legacy custom world, retained as fallback)
 ```
 
 ---
 
-## ROS2 Topics
+## ROS 2 Topics & Actions
 
-| Topic | Type | Description |
-|-------|------|-------------|
-| `/natural_nav/command` | `std_msgs/String` | Natural language input |
-| `/natural_nav/task_graph` | `std_msgs/String` | JSON task graph from LLM |
-| `/natural_nav/fleet_status` | `std_msgs/String` | JSON per-robot task status |
-| `/natural_nav/detections` | `std_msgs/String` | JSON semantic detections |
-| `/natural_nav/semantic_map` | `std_msgs/String` | JSON open-vocab semantic map |
-| `/natural_nav/planner_status` | `std_msgs/String` | Human-readable planner log |
-| `/robot_1/navigate_to_pose` | Nav2 action | Robot 1 navigation goal |
-| `/robot_2/navigate_to_pose` | Nav2 action | Robot 2 navigation goal |
-| `/robot_1/camera/image_raw` | `sensor_msgs/Image` | Robot 1 camera feed |
-| `/robot_2/camera/image_raw` | `sensor_msgs/Image` | Robot 2 camera feed |
+| Name | Type | Direction | Purpose |
+|------|------|-----------|---------|
+| `/natural_nav/command` | `std_msgs/String` | in | Natural-language command from user |
+| `/natural_nav/task_graph` | `std_msgs/String` (JSON) | planner → executor | Decomposed task DAG |
+| `/natural_nav/semantic_map` | `std_msgs/String` (JSON) | detector → executor | Snapshot of label → pose map |
+| `/natural_nav/fleet_status` | `std_msgs/String` (JSON) | executor → user | Mission + per-task status |
+| `/natural_nav/replan_request` | `std_msgs/String` (JSON) | executor → planner | Context for LLM replan on failure |
+| `/rgbd_camera/image` | `sensor_msgs/Image` | sim → detector | TB4 OAK-D RGB at ~10 Hz |
+| `/rgbd_camera/depth_image` | `sensor_msgs/Image` | sim → detector | Depth, same rate |
+| `/rgbd_camera/camera_info` | `sensor_msgs/CameraInfo` | sim → detector | Intrinsics for 3D unprojection |
+| `/navigate_to_pose` | `nav2_msgs/action/NavigateToPose` | executor → Nav2 | Goal dispatch |
 
 ---
 
 ## Configuration
 
-LLM provider is configurable via environment variables:
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `LLM_PROVIDER` | Provider name | `anthropic`, `openai` |
-| `LLM_API_KEY` | API key | `sk-ant-...` |
-| `LLM_MODEL` | Model name | `claude-sonnet-4-6`, `gpt-4o` |
-
----
-
-## Demo
-
-<!-- TODO: insert GIF here -->
-
----
-
-## Development
-
-### Build locally (without Docker)
+`.env` (gitignored — copy from `.env.example`):
 
 ```bash
-source /opt/ros/jazzy/setup.bash
-cd /path/to/natural_nav_ws
-colcon build --symlink-install --packages-select natural_nav
-source install/setup.bash
-ros2 launch natural_nav naturalnav.launch.py
+LLM_PROVIDER=xai            # xai | ollama | anthropic | openai
+LLM_MODEL=grok-4.3
+LLM_API_KEY=sk-...          # leave blank for ollama
+OLLAMA_HOST=http://localhost:11434
+LLM_BASE_URL=               # only needed to override OpenAI-compatible endpoint
 ```
+
+The `llm_client.py` factory picks the right client + auto-defaults the base URL for `xai`.
+
+---
+
+## Design Notes
+
+- **TurtleBot4 in the Nav2 warehouse sim.** The work here is on the perception and LLM layers, not the navigation stack. Using the upstream sim keeps the navigation layer reproducible and out of scope.
+- **Semantic map instead of fixed waypoints.** Language-conditioned navigation requires that LLM-named targets resolve through perception, not a hardcoded `label → (x, y)` table. This is the VLMaps-family approach.
+- **Provider-agnostic LLM.** Switching between local (Ollama) and cloud (xAI / Anthropic / OpenAI) is a one-line `.env` change. No code path differs between modes.
+- **GPU passthrough.** Gazebo's `ogre2` sensor system needs a render context. Without a GPU exposed to the container, the camera sensor registers its topic but never publishes frames. The compose file enables the NVIDIA runtime.
 
 ---
 
 ## Roadmap
 
-- [x] LLM task decomposition
-- [x] Dynamic task allocation (availability + proximity)
-- [x] Fleet orchestration with Nav2 action clients
-- [x] LLM-driven failure recovery / replanning
-- [x] CLIP + GroundingDINO semantic detector
-- [x] Multi-stage Docker build
-- [ ] Gazebo warehouse world with 2x TurtleBot3
-- [ ] Live semantic map visualization in RViz
-- [ ] GroundingDINO model weight download script
+- [x] Containerized GPU-enabled stack (multi-stage, NVIDIA runtime)
+- [x] Sim + TB4 + Nav2 in warehouse, full reference stack
+- [x] Provider-agnostic LLM planner with structured JSON output
+- [x] Task executor with Nav2 action client + DAG walk + replan requests
+- [x] In-memory semantic map (label → pose, snapshot serialization)
+- [ ] **Semantic detector: GroundingDINO + depth-to-map projection**
+- [ ] Planner subscription to `/natural_nav/replan_request` (close the loop)
 - [ ] Demo video / GIF
+- [ ] Rename `fleet_orchestrator.py` → `task_executor.py` (cosmetic; deferred to avoid churn)
 
 ---
 
