@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ROS 2 / colcon build artifacts
+install/
+log/
+
+# Environment / secrets
+.env
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store

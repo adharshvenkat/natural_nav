@@ -19,8 +19,8 @@ Mobile-robot project in a multi-modality portfolio focused on perception, planni
 | LLM planner (xAI Grok / Ollama / Anthropic / OpenAI) | ✅ working |
 | Task executor (Nav2 action client + DAG + replan requests) | ✅ working |
 | In-memory semantic map (label → pose, JSON snapshots) | ✅ data structure ready |
-| Semantic detector (GroundingDINO + depth → map projection) | 🚧 in progress |
-| Replan loop wired end-to-end | ⏳ pending |
+| Semantic detector (GroundingDINO + depth → map projection) | ✅ code complete, geometry unit-tested; ⏳ GPU-sim validation |
+| Replan loop wired end-to-end (executor ↔ planner) | ✅ wired in code; ⏳ sim validation |
 | Demo video / GIF | ⏳ pending |
 
 ---
@@ -145,7 +145,8 @@ natural_nav_ws/
     │   ├── llm_planner.py         # Command → task graph
     │   ├── fleet_orchestrator.py  # Task executor (Nav2 dispatch + DAG walk)
     │   ├── semantic_map.py        # In-memory label → pose store
-    │   └── semantic_detector.py   # GroundingDINO + depth projection (WIP)
+    │   ├── projection.py          # Pixel→3D geometry (pure numpy, unit-tested)
+    │   └── semantic_detector.py   # GroundingDINO + depth projection → map
     ├── launch/
     │   ├── simulation.launch.py   # Wraps nav2_bringup tb4_simulation_launch
     │   └── naturalnav.launch.py   # Brings up perception + planner + executor
@@ -203,8 +204,9 @@ The `llm_client.py` factory picks the right client + auto-defaults the base URL 
 - [x] Provider-agnostic LLM planner with structured JSON output
 - [x] Task executor with Nav2 action client + DAG walk + replan requests
 - [x] In-memory semantic map (label → pose, snapshot serialization)
-- [ ] **Semantic detector: GroundingDINO + depth-to-map projection**
-- [ ] Planner subscription to `/natural_nav/replan_request` (close the loop)
+- [x] **Semantic detector: GroundingDINO + depth-to-map projection** (projection extracted to `projection.py`, hardened against depth holes, unit-tested)
+- [x] Planner subscription to `/natural_nav/replan_request` (close the loop)
+- [ ] End-to-end validation in the GPU warehouse sim (map populates → command → nav → replan)
 - [ ] Demo video / GIF
 - [ ] Rename `fleet_orchestrator.py` → `task_executor.py` (cosmetic; deferred to avoid churn)
 

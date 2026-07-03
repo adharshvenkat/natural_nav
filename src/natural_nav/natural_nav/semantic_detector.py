@@ -44,6 +44,7 @@ from tf2_geometry_msgs import do_transform_point
 from cv_bridge import CvBridge
 
 from natural_nav.semantic_map import SemanticMap
+from natural_nav.projection import sample_depth, unproject, scale_pixel
 
 
 # Default open-vocab prompt for warehouse scenes. GroundingDINO uses ' . '
@@ -288,18 +289,21 @@ class SemanticDetectorNode(Node):
 
         depth_h, depth_w = depth.shape[:2]
         for det in detections:
-            # If RGB and depth have different sizes, scale the pixel coords.
-            u = int(det['cx'] * depth_w / intr.width)
-            v = int(det['cy'] * depth_h / intr.height)
-            if not (0 <= u < depth_w and 0 <= v < depth_h):
+            # Sample depth in the depth image's own resolution: the aligned
+            # depth image may be published at a different size than the RGB
+            # feed the intrinsics describe.
+            u_d, v_d = scale_pixel(
+                det['cx'], det['cy'], intr.width, intr.height, depth_w, depth_h)
+            z = sample_depth(
+                depth, u_d, v_d,
+                min_depth=self._min_depth, max_depth=self._max_depth)
+            if z is None:
                 continue
-            z = float(depth[v, u])
-            if not np.isfinite(z) or z < self._min_depth or z > self._max_depth:
-                continue
-            # Unproject pixel -> point in camera optical frame
-            x_cam = (u - intr.cx) * z / intr.fx
-            y_cam = (v - intr.cy) * z / intr.fy
-            z_cam = z
+            # Unproject in the RGB/camera_info pixel space using the matching
+            # intrinsics — never the depth-scaled coords with RGB intrinsics.
+            x_cam, y_cam, z_cam = unproject(
+                det['cx'], det['cy'], z,
+                intr.fx, intr.fy, intr.cx, intr.cy)
             point = PointStamped()
             point.header = rgb_header
             point.point.x = x_cam
