@@ -1,10 +1,11 @@
-# NaturalNav uses binary installs for Nav2 and Open-RMF (via apt inside Docker).
-# This file is kept as a reference for the source versions used.
+# NaturalNav uses binary installs (via apt inside Docker), so there are no
+# source repositories to clone. This file is kept as a reference for the
+# ROS 2 packages the stack depends on.
 #
-# Nav2:      ros-jazzy-navigation2, ros-jazzy-nav2-bringup
-# Open-RMF:  ros-jazzy-rmf-ros2, ros-jazzy-rmf-demos
+# Nav2:        ros-jazzy-navigation2, ros-jazzy-nav2-bringup
+# TB4 sim:     ros-jazzy-nav2-minimal-tb4-sim, ros-jazzy-nav2-minimal-tb4-description
 #
 # To install locally (outside Docker):
 #   sudo apt-get install ros-jazzy-navigation2 ros-jazzy-nav2-bringup \
-#     ros-jazzy-rmf-ros2 ros-jazzy-rmf-demos ros-jazzy-rmf-building-map-tools
+#     ros-jazzy-nav2-minimal-tb4-sim ros-jazzy-nav2-minimal-tb4-description
 repositories: {}

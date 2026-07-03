@@ -13,9 +13,11 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
 
     return LaunchDescription([
-        DeclareLaunchArgument('llm_provider', default_value=os.environ.get('LLM_PROVIDER', 'anthropic')),
+        # Defaults match docker-compose / .env (local Ollama, zero-key). Set
+        # LLM_PROVIDER / LLM_MODEL in .env to switch to a cloud provider.
+        DeclareLaunchArgument('llm_provider', default_value=os.environ.get('LLM_PROVIDER', 'ollama')),
         DeclareLaunchArgument('llm_api_key', default_value=os.environ.get('LLM_API_KEY', '')),
-        DeclareLaunchArgument('llm_model', default_value=os.environ.get('LLM_MODEL', 'claude-sonnet-4-6')),
+        DeclareLaunchArgument('llm_model', default_value=os.environ.get('LLM_MODEL', 'qwen2.5:3b')),
         DeclareLaunchArgument('use_sim_time', default_value='true'),
 
         Node(
