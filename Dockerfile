@@ -17,25 +17,41 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-jazzy-sensor-msgs \
     build-essential \
     git \
-    nvidia-cuda-toolkit \
+    wget \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# CUDA 12.8 toolkit (nvcc) from NVIDIA's repo. Ubuntu's packaged nvidia-cuda-toolkit
+# is only 12.0 and cannot target consumer Blackwell (sm_120); GroundingDINO's custom
+# ms_deform_attn op must be compiled with nvcc >= 12.8. Builder-only: the runtime
+# stage copies just the built artifacts, so none of this toolkit lands in the image.
+RUN wget -qO /tmp/cuda-keyring.deb \
+      https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb \
+    && dpkg -i /tmp/cuda-keyring.deb \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends cuda-toolkit-12-8 \
+    && rm -rf /var/lib/apt/lists/* /tmp/cuda-keyring.deb
+
 # CUDA env for GroundingDINO's setup.py to detect and compile its ms_deform_attn op
-ENV CUDA_HOME=/usr
+ENV CUDA_HOME=/usr/local/cuda-12.8
+ENV PATH=/usr/local/cuda-12.8/bin:${PATH}
 ENV FORCE_CUDA=1
-# Target the GTX 1650 Ti's compute capability (7.5). Add more if you target other GPUs.
-ENV TORCH_CUDA_ARCH_LIST="7.5"
+# Target consumer Blackwell (RTX 50-series, compute capability 12.0 / sm_120).
+# +PTX embeds forward-compatible PTX so the op still loads on newer archs.
+ENV TORCH_CUDA_ARCH_LIST="12.0+PTX"
 
-# Step 1: torch must be installed before GroundingDINO, since its setup.py imports torch
+# Step 1: torch must be installed before GroundingDINO, since its setup.py imports torch.
+# cu128 wheels (torch >= 2.7) are the first with Blackwell/sm_120 kernels; the old
+# cu124/2.6 wheels top out at sm_90 and crash on the RTX 50-series at runtime.
 RUN pip install --no-cache-dir --break-system-packages \
-    --index-url https://download.pytorch.org/whl/cu124 \
-    "torch==2.6.*" "torchvision==0.21.*"
+    --index-url https://download.pytorch.org/whl/cu128 \
+    "torch==2.7.*" "torchvision==0.22.*"
 
-# Step 2a: deps that may try to upgrade torch, installed with explicit cu124 index
+# Step 2a: deps that may try to upgrade torch, installed with explicit cu128 index
 # so any transitive torch reinstall keeps the matching CUDA wheel.
 # --ignore-installed numpy: apt-managed numpy can't be removed by pip; install ours alongside.
 RUN pip install --no-cache-dir --break-system-packages --ignore-installed numpy \
-    --extra-index-url https://download.pytorch.org/whl/cu124 \
+    --extra-index-url https://download.pytorch.org/whl/cu128 \
     "numpy<2" \
     "transformers<5" \
     "tokenizers<0.22" \
@@ -46,8 +62,8 @@ RUN pip install --no-cache-dir --break-system-packages --ignore-installed numpy 
 # doesn't pull cu130 from PyPI. Their transitive deps are already covered above
 # (transformers, timm, opencv, etc) or installed explicitly here.
 RUN pip install --no-cache-dir --break-system-packages --ignore-installed scipy \
-    --extra-index-url https://download.pytorch.org/whl/cu124 \
-    "torch==2.6.*" "torchvision==0.21.*" \
+    --extra-index-url https://download.pytorch.org/whl/cu128 \
+    "torch==2.7.*" "torchvision==0.22.*" \
     "numpy<2" \
     "huggingface-hub<1.0" \
     "timm<=1.0.19" "addict" "yapf" "supervision" "pycocotools" "opencv-python" \
