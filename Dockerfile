@@ -1,8 +1,6 @@
-# ─────────────────────────────────────────────────────────────────────────────
 # Stage 1: builder
 # Installs build tools, compiles GroundingDINO C++ extensions, builds the
 # natural_nav ROS2 package. Nothing from this stage leaks into runtime.
-# ─────────────────────────────────────────────────────────────────────────────
 FROM osrf/ros:jazzy-desktop AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -92,11 +90,9 @@ RUN . /opt/ros/jazzy/setup.sh && \
         --packages-select natural_nav
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Stage 2: runtime
 # Clean base: copies only built artifacts from builder.
 # No compilers, no pip cache, no build-essential.
-# ─────────────────────────────────────────────────────────────────────────────
 FROM osrf/ros:jazzy-desktop AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
