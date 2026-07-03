@@ -300,7 +300,7 @@ class SemanticDetectorNode(Node):
             if z is None:
                 continue
             # Unproject in the RGB/camera_info pixel space using the matching
-            # intrinsics — never the depth-scaled coords with RGB intrinsics.
+            # intrinsics, never the depth-scaled coords with RGB intrinsics.
             x_cam, y_cam, z_cam = unproject(
                 det['cx'], det['cy'], z,
                 intr.fx, intr.fy, intr.cx, intr.cy)

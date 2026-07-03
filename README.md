@@ -8,9 +8,7 @@
 
 > *"Go inspect the shelf next to the pallet."*
 
-NaturalNav takes a natural-language command, decomposes it with an LLM into a structured task graph, and dispatches navigation goals to a TurtleBot4 in a Gazebo warehouse — but task targets aren't hardcoded coordinates. They're resolved through an **open-vocabulary semantic map** the robot builds online from its RGBD camera using GroundingDINO. The whole stack runs in `docker compose up`.
-
-Mobile-robot project in a multi-modality portfolio focused on perception, planning, and reasoning.
+NaturalNav takes a natural-language command, decomposes it with an LLM into a structured task graph, and dispatches navigation goals to a TurtleBot4 in a Gazebo warehouse. Task targets aren't hardcoded coordinates: they're resolved through an **open-vocabulary semantic map** the robot builds online from its RGBD camera using GroundingDINO. The full stack (Gazebo, Nav2, perception, and LLM planning) is fully Dockerized with GPU passthrough.
 
 ---
 
@@ -103,24 +101,24 @@ git clone https://github.com/adharshvenkat/natural_nav.git
 cd natural_nav
 
 cp .env.example .env
-# edit .env — pick LLM_PROVIDER, paste your API key, etc. (defaults to local Ollama)
+# edit .env: pick LLM_PROVIDER, paste your API key, etc. (defaults to local Ollama)
 
 xhost +local:docker              # let the container draw on your X display
 docker compose up -d ollama      # start local LLM (skip if using a cloud provider)
 ./scripts/setup_ollama.sh        # pull qwen2.5:3b into the ollama volume (one-time)
 ./scripts/setup_groundingdino.sh # pull GroundingDINO weights into the volume (one-time)
 
-# Terminal 1 — Gazebo + Nav2 + RViz
+# Terminal 1: Gazebo + Nav2 + RViz
 docker compose run --rm --name nn naturalnav \
   ros2 launch natural_nav simulation.launch.py
 ```
 
 Gazebo + RViz will open. In RViz, click **2D Pose Estimate** and place the robot pose roughly where it sits in Gazebo so AMCL localizes.
 
-Then start the NaturalNav nodes (planner, executor, semantic detector) — the `simulation.launch.py` above only brings up the sim and Nav2:
+Then start the NaturalNav nodes (planner, executor, semantic detector). The `simulation.launch.py` above only brings up the sim and Nav2:
 
 ```bash
-# Terminal 2 — LLM planner + task executor + semantic detector
+# Terminal 2: LLM planner + task executor + semantic detector
 docker exec -it nn /entrypoint.sh \
   ros2 launch natural_nav naturalnav.launch.py
 ```
@@ -189,7 +187,7 @@ natural_nav/
 
 ## Configuration
 
-`.env` (gitignored — copy from `.env.example`):
+`.env` (gitignored, copy from `.env.example`):
 
 ```bash
 LLM_PROVIDER=ollama         # ollama | anthropic | openai | xai

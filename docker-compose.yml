@@ -14,7 +14,7 @@ services:
       - OLLAMA_HOST=${OLLAMA_HOST:-http://localhost:11434}
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_BASE_URL=${LLM_BASE_URL:-}
-      # X11 forwarding — lets Gazebo render on the host display
+      # X11 forwarding: lets Gazebo render on the host display
       - DISPLAY=${DISPLAY}
       # NVIDIA GPU access for Gazebo sensor rendering
       - NVIDIA_VISIBLE_DEVICES=all
@@ -24,11 +24,11 @@ services:
 
     # ── Volume mounts ─────────────────────────────────────────────────────────
     volumes:
-      # X11 socket — required for Gazebo GUI
+      # X11 socket, required for Gazebo GUI
       - /tmp/.X11-unix:/tmp/.X11-unix
-      # Model weights cache — avoids re-downloading GroundingDINO weights
+      # Model weights cache, avoids re-downloading GroundingDINO weights
       - naturalnav_weights:/root/.cache/naturalnav
-      # Gazebo fuel cache — avoids re-downloading warehouse models every run
+      # Gazebo fuel cache, avoids re-downloading warehouse models every run
       - gz_fuel_cache:/root/.gz/fuel
 
     # ── Networking ────────────────────────────────────────────────────────────

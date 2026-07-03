@@ -28,12 +28,12 @@ ENV FORCE_CUDA=1
 # Target the GTX 1650 Ti's compute capability (7.5). Add more if you target other GPUs.
 ENV TORCH_CUDA_ARCH_LIST="7.5"
 
-# Step 1: torch must be installed before GroundingDINO — its setup.py imports torch
+# Step 1: torch must be installed before GroundingDINO, since its setup.py imports torch
 RUN pip install --no-cache-dir --break-system-packages \
     --index-url https://download.pytorch.org/whl/cu124 \
     "torch==2.6.*" "torchvision==0.21.*"
 
-# Step 2a: deps that may try to upgrade torch — installed with explicit cu124 index
+# Step 2a: deps that may try to upgrade torch, installed with explicit cu124 index
 # so any transitive torch reinstall keeps the matching CUDA wheel.
 # --ignore-installed numpy: apt-managed numpy can't be removed by pip; install ours alongside.
 RUN pip install --no-cache-dir --break-system-packages --ignore-installed numpy \
@@ -78,7 +78,7 @@ RUN . /opt/ros/jazzy/setup.sh && \
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 2: runtime
-# Clean base — copies only built artifacts from builder.
+# Clean base: copies only built artifacts from builder.
 # No compilers, no pip cache, no build-essential.
 # ─────────────────────────────────────────────────────────────────────────────
 FROM osrf/ros:jazzy-desktop AS runtime
@@ -86,7 +86,7 @@ FROM osrf/ros:jazzy-desktop AS runtime
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Runtime deps only (no build tools)
-# ros:jazzy-desktop base already includes Gazebo — we add robot-specific pkgs
+# ros:jazzy-desktop base already includes Gazebo; we add robot-specific pkgs
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     ros-jazzy-navigation2 \

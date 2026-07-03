@@ -1,8 +1,8 @@
 """
 Pixel-to-3D projection helpers.
 
-Deliberately free of ROS and torch imports so the geometry — the part most
-likely to carry a silent bug — can be unit-tested on a plain Python host
+Deliberately free of ROS and torch imports so the geometry, the part most
+likely to carry a silent bug, can be unit-tested on a plain Python host
 without the GPU sim. semantic_detector imports these; the test suite exercises
 them directly.
 
@@ -61,9 +61,8 @@ def unproject(
     """Back-project pixel (u, v) at metric depth z to a point in the camera
     optical frame via the pinhole model.
 
-    (u, v) and (cx, cy) must live in the *same* pixel space — i.e. unproject
-    with the intrinsics that match the coordinates you pass, not a rescaled
-    copy. semantic_detector samples depth in the depth image's resolution but
+    (u, v) and (cx, cy) must live in the *same* pixel space: unproject with
+    the intrinsics that match the coordinates you pass, not a rescaled copy. semantic_detector samples depth in the depth image's resolution but
     unprojects in the camera_info (RGB) resolution, keeping this consistent.
     """
     x = (u - cx) * z / fx
