@@ -50,7 +50,7 @@ Output ONLY valid JSON (no prose, no markdown fences) matching this schema:
 
 CRITICAL: the "target" field MUST be one of the labels the robot has actually
 perceived. Use ONLY labels from this list (case-insensitive, exact match
-preferred — the executor will fuzzy-match if needed):
+preferred; the executor will fuzzy-match if needed):
 
 {known_labels}
 
@@ -102,7 +102,7 @@ class LLMPlannerNode(Node):
 
         self.get_logger().info('LLM Planner ready')
 
-    # ── subscriptions ────────────────────────────────────────────────────────
+    # subscriptions
 
     def _on_semantic_map(self, msg: String):
         try:
@@ -128,7 +128,7 @@ class LLMPlannerNode(Node):
             return
         if not self._last_command:
             self.get_logger().warn(
-                'Replan requested but no prior command — ignoring')
+                'Replan requested but no prior command, ignoring')
             return
         # Pull the freshest known_labels from the request (executor sends them).
         self._known_labels = sorted(ctx.get('known_labels', self._known_labels))
@@ -138,17 +138,17 @@ class LLMPlannerNode(Node):
             f'{ctx.get("failed_task", {}).get("reason", "(no reason)")}')
         self._plan(self._last_command)
 
-    # ── planning ─────────────────────────────────────────────────────────────
+    # planning
 
     def _plan(self, command: str):
         self._publish_status(f'planning: {command}')
 
         if not self._known_labels:
             self.get_logger().warn(
-                'No known labels in semantic map yet — emitting empty plan. '
+                'No known labels in semantic map yet, emitting empty plan. '
                 'Drive the robot around to populate the map first.')
             empty = {
-                'summary': 'no perceived labels yet — explore first',
+                'summary': 'no perceived labels yet, explore first',
                 'tasks': [],
                 'replan_on_failure': False,
             }

@@ -89,7 +89,7 @@ class TaskExecutorNode(Node):
         self.get_logger().info(
             f'Task Executor ready, waiting on Nav2 action {nav_action!r}')
 
-    # ── subscriptions ────────────────────────────────────────────────────────
+    # subscriptions
 
     def _on_task_graph(self, msg: String):
         try:
@@ -123,7 +123,7 @@ class TaskExecutorNode(Node):
         except (json.JSONDecodeError, ValueError) as e:
             self.get_logger().warn(f'Bad semantic map snapshot: {e}')
 
-    # ── execution loop ───────────────────────────────────────────────────────
+    # execution loop
 
     def _tick(self):
         if not self._tasks or self._active_task_id is not None:
@@ -256,7 +256,7 @@ class TaskExecutorNode(Node):
         self.get_logger().info(
             f'Requested replan for task {failed_task.id}: {failed_task.failure_reason}')
 
-    # ── helpers ──────────────────────────────────────────────────────────────
+    # helpers
 
     def _publish_status(self):
         snapshot = {

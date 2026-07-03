@@ -1,7 +1,7 @@
 """
 Geometry tests for natural_nav.projection.
 
-Pure numpy — no ROS, no torch, no GPU sim — so the depth-to-3D math that
+Pure numpy: no ROS, no torch, no GPU sim, so the depth-to-3D math that
 semantic_detector relies on is actually exercised in CI and on a dev host.
 Runs under colcon test and standalone: `python3 -m pytest test/test_projection.py`.
 """

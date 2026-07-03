@@ -1,8 +1,6 @@
-# ─────────────────────────────────────────────────────────────────────────────
 # Stage 1: builder
 # Installs build tools, compiles GroundingDINO C++ extensions, builds the
 # natural_nav ROS2 package. Nothing from this stage leaks into runtime.
-# ─────────────────────────────────────────────────────────────────────────────
 FROM osrf/ros:jazzy-desktop AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -25,7 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # CUDA 12.8 toolkit (nvcc) from NVIDIA's repo. Ubuntu's packaged nvidia-cuda-toolkit
 # is only 12.0 and cannot target consumer Blackwell (sm_120); GroundingDINO's custom
-# ms_deform_attn op must be compiled with nvcc >= 12.8. Builder-only — the runtime
+# ms_deform_attn op must be compiled with nvcc >= 12.8. Builder-only: the runtime
 # stage copies just the built artifacts, so none of this toolkit lands in the image.
 RUN wget -qO /tmp/cuda-keyring.deb \
       https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb \
@@ -42,14 +40,14 @@ ENV FORCE_CUDA=1
 # +PTX embeds forward-compatible PTX so the op still loads on newer archs.
 ENV TORCH_CUDA_ARCH_LIST="12.0+PTX"
 
-# Step 1: torch must be installed before GroundingDINO — its setup.py imports torch.
+# Step 1: torch must be installed before GroundingDINO, since its setup.py imports torch.
 # cu128 wheels (torch >= 2.7) are the first with Blackwell/sm_120 kernels; the old
 # cu124/2.6 wheels top out at sm_90 and crash on the RTX 50-series at runtime.
 RUN pip install --no-cache-dir --break-system-packages \
     --index-url https://download.pytorch.org/whl/cu128 \
     "torch==2.7.*" "torchvision==0.22.*"
 
-# Step 2a: deps that may try to upgrade torch — installed with explicit cu128 index
+# Step 2a: deps that may try to upgrade torch, installed with explicit cu128 index
 # so any transitive torch reinstall keeps the matching CUDA wheel.
 # --ignore-installed numpy: apt-managed numpy can't be removed by pip; install ours alongside.
 RUN pip install --no-cache-dir --break-system-packages --ignore-installed numpy \
@@ -92,17 +90,15 @@ RUN . /opt/ros/jazzy/setup.sh && \
         --packages-select natural_nav
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Stage 2: runtime
-# Clean base — copies only built artifacts from builder.
+# Clean base: copies only built artifacts from builder.
 # No compilers, no pip cache, no build-essential.
-# ─────────────────────────────────────────────────────────────────────────────
 FROM osrf/ros:jazzy-desktop AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Runtime deps only (no build tools)
-# ros:jazzy-desktop base already includes Gazebo — we add robot-specific pkgs
+# ros:jazzy-desktop base already includes Gazebo; we add robot-specific pkgs
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     ros-jazzy-navigation2 \

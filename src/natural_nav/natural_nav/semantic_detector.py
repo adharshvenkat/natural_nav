@@ -141,7 +141,7 @@ class SemanticDetectorNode(Node):
             f'inference={1.0/detect_period:.1f} Hz, '
             f'publish={1.0/publish_period:.1f} Hz')
 
-    # ── model load ──────────────────────────────────────────────────────────
+    # model load
 
     def _load_model(self):
         from groundingdino.util.inference import load_model
@@ -160,7 +160,7 @@ class SemanticDetectorNode(Node):
         self._gdino_model = load_model(str(config), str(weights), device=self._device)
         self.get_logger().info('GroundingDINO loaded')
 
-    # ── subscriptions ────────────────────────────────────────────────────────
+    # subscriptions
 
     def _on_rgb(self, msg: Image):
         try:
@@ -194,7 +194,7 @@ class SemanticDetectorNode(Node):
                 width=msg.width, height=msg.height,
             )
 
-    # ── inference + projection ──────────────────────────────────────────────
+    # inference + projection
 
     def _run_inference(self):
         if not self._inference_lock.acquire(blocking=False):
@@ -300,7 +300,7 @@ class SemanticDetectorNode(Node):
             if z is None:
                 continue
             # Unproject in the RGB/camera_info pixel space using the matching
-            # intrinsics — never the depth-scaled coords with RGB intrinsics.
+            # intrinsics, never the depth-scaled coords with RGB intrinsics.
             x_cam, y_cam, z_cam = unproject(
                 det['cx'], det['cy'], z,
                 intr.fx, intr.fy, intr.cx, intr.cy)
@@ -317,7 +317,7 @@ class SemanticDetectorNode(Node):
             self._semantic_map.update(
                 det['label'], point_map.point.x, point_map.point.y, det['score'])
 
-    # ── publishing ──────────────────────────────────────────────────────────
+    # publishing
 
     def _publish_map(self):
         if len(self._semantic_map) == 0:

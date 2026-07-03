@@ -41,7 +41,7 @@
       <direction>-0.5 0.1 -0.9</direction>
     </light>
 
-    <!-- ── Warehouse artifacts ───────────────────────────────────────────────
+    <!-- Warehouse artifacts.
          Positioned to match location->pose map in fleet_orchestrator.py so
          navigation targets align with visible, detectable objects. -->
 

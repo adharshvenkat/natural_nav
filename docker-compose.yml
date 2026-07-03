@@ -7,14 +7,14 @@ services:
     image: naturalnav:latest
     container_name: naturalnav
 
-    # ── LLM configuration ────────────────────────────────────────────────────
+    # LLM configuration
     environment:
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
       - LLM_MODEL=${LLM_MODEL:-qwen2.5:3b}
       - OLLAMA_HOST=${OLLAMA_HOST:-http://localhost:11434}
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_BASE_URL=${LLM_BASE_URL:-}
-      # X11 forwarding — lets Gazebo render on the host display
+      # X11 forwarding: lets Gazebo render on the host display
       - DISPLAY=${DISPLAY}
       # NVIDIA GPU access for Gazebo sensor rendering
       - NVIDIA_VISIBLE_DEVICES=all
@@ -22,19 +22,19 @@ services:
       - __NV_PRIME_RENDER_OFFLOAD=1
       - __GLX_VENDOR_LIBRARY_NAME=nvidia
 
-    # ── Volume mounts ─────────────────────────────────────────────────────────
+    # Volume mounts
     volumes:
-      # X11 socket — required for Gazebo GUI
+      # X11 socket, required for Gazebo GUI
       - /tmp/.X11-unix:/tmp/.X11-unix
-      # Model weights cache — avoids re-downloading GroundingDINO weights
+      # Model weights cache, avoids re-downloading GroundingDINO weights
       - naturalnav_weights:/root/.cache/naturalnav
-      # Gazebo fuel cache — avoids re-downloading warehouse models every run
+      # Gazebo fuel cache, avoids re-downloading warehouse models every run
       - gz_fuel_cache:/root/.gz/fuel
 
-    # ── Networking ────────────────────────────────────────────────────────────
+    # Networking
     network_mode: host
 
-    # ── GPU (NVIDIA Container Toolkit) ────────────────────────────────────────
+    # GPU (NVIDIA Container Toolkit)
     runtime: nvidia
     deploy:
       resources:
@@ -44,14 +44,14 @@ services:
               count: all
               capabilities: [gpu]
 
-    # ── Runtime ───────────────────────────────────────────────────────────────
+    # Runtime
     privileged: false
     restart: unless-stopped
 
     stdin_open: true
     tty: true
 
-  # ── Local LLM server (Ollama) ─────────────────────────────────────────────
+  # Local LLM server (Ollama)
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
