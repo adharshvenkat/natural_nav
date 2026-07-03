@@ -102,7 +102,7 @@ class LLMPlannerNode(Node):
 
         self.get_logger().info('LLM Planner ready')
 
-    # ── subscriptions ────────────────────────────────────────────────────────
+    # subscriptions
 
     def _on_semantic_map(self, msg: String):
         try:
@@ -138,7 +138,7 @@ class LLMPlannerNode(Node):
             f'{ctx.get("failed_task", {}).get("reason", "(no reason)")}')
         self._plan(self._last_command)
 
-    # ── planning ─────────────────────────────────────────────────────────────
+    # planning
 
     def _plan(self, command: str):
         self._publish_status(f'planning: {command}')
