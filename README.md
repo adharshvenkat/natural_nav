@@ -1,5 +1,9 @@
 # NaturalNav
 
+[![CI](https://github.com/adharshvenkat/natural_nav/actions/workflows/ci.yml/badge.svg)](https://github.com/adharshvenkat/natural_nav/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![ROS 2 Jazzy](https://img.shields.io/badge/ROS%202-Jazzy-blue.svg)](https://docs.ros.org/en/jazzy/)
+
 **Language-conditioned semantic navigation on a single mobile robot.**
 
 > *"Go inspect the shelf next to the pallet."*
@@ -79,7 +83,7 @@ Sim, Nav2, and RViz come from Nav2's `tb4_simulation_launch.py`. The perception 
 | Robot | TurtleBot4 (OAK-D Pro RGBD camera + RPLidar) |
 | Navigation | Nav2 (AMCL + planner + controller + behavior tree) on pre-built warehouse map |
 | Perception | GroundingDINO (open-vocab detection) + CLIP (reserved for disambiguation) |
-| LLM | Provider-agnostic: xAI Grok 4.3 (default), Ollama qwen2.5:3b (local), Anthropic, OpenAI |
+| LLM | Provider-agnostic: Ollama qwen2.5:3b (local default), xAI Grok, Anthropic, OpenAI |
 | Containerization | Docker + Docker Compose, multi-stage build, NVIDIA Container Toolkit for sim rendering |
 | ROS 2 | Jazzy |
 
@@ -99,17 +103,27 @@ git clone https://github.com/adharshvenkat/natural_nav.git
 cd natural_nav
 
 cp .env.example .env
-# edit .env — pick LLM_PROVIDER, paste your API key, etc.
+# edit .env — pick LLM_PROVIDER, paste your API key, etc. (defaults to local Ollama)
 
-xhost +local:docker          # let the container draw on your X display
-docker compose up -d ollama  # start local LLM (skip if using a cloud provider)
-./scripts/setup_ollama.sh    # pull qwen2.5:3b into the ollama volume (one-time)
+xhost +local:docker              # let the container draw on your X display
+docker compose up -d ollama      # start local LLM (skip if using a cloud provider)
+./scripts/setup_ollama.sh        # pull qwen2.5:3b into the ollama volume (one-time)
+./scripts/setup_groundingdino.sh # pull GroundingDINO weights into the volume (one-time)
 
+# Terminal 1 — Gazebo + Nav2 + RViz
 docker compose run --rm --name nn naturalnav \
   ros2 launch natural_nav simulation.launch.py
 ```
 
 Gazebo + RViz will open. In RViz, click **2D Pose Estimate** and place the robot pose roughly where it sits in Gazebo so AMCL localizes.
+
+Then start the NaturalNav nodes (planner, executor, semantic detector) — the `simulation.launch.py` above only brings up the sim and Nav2:
+
+```bash
+# Terminal 2 — LLM planner + task executor + semantic detector
+docker exec -it nn /entrypoint.sh \
+  ros2 launch natural_nav naturalnav.launch.py
+```
 
 ### Send a command
 
@@ -133,7 +147,7 @@ docker exec -it nn bash -c "source /opt/ros/jazzy/setup.bash && \
 ## Repository Layout
 
 ```
-natural_nav_ws/
+natural_nav/
 ├── Dockerfile                 # Multi-stage: builder + runtime
 ├── docker-compose.yml         # naturalnav + ollama services, GPU + X11
 ├── .env.example               # LLM provider / model / API key template
@@ -150,7 +164,6 @@ natural_nav_ws/
     ├── launch/
     │   ├── simulation.launch.py   # Wraps nav2_bringup tb4_simulation_launch
     │   └── naturalnav.launch.py   # Brings up perception + planner + executor
-    ├── config/naturalnav_params.yaml
     └── worlds/naturalnav.world    # (legacy custom world, retained as fallback)
 ```
 
@@ -163,7 +176,9 @@ natural_nav_ws/
 | `/natural_nav/command` | `std_msgs/String` | in | Natural-language command from user |
 | `/natural_nav/task_graph` | `std_msgs/String` (JSON) | planner → executor | Decomposed task DAG |
 | `/natural_nav/semantic_map` | `std_msgs/String` (JSON) | detector → executor | Snapshot of label → pose map |
+| `/natural_nav/detections` | `std_msgs/String` (JSON) | detector → * | Per-frame raw detections (label, score, bbox) |
 | `/natural_nav/fleet_status` | `std_msgs/String` (JSON) | executor → user | Mission + per-task status |
+| `/natural_nav/planner_status` | `std_msgs/String` | planner → user | Human-readable planner status |
 | `/natural_nav/replan_request` | `std_msgs/String` (JSON) | executor → planner | Context for LLM replan on failure |
 | `/rgbd_camera/image` | `sensor_msgs/Image` | sim → detector | TB4 OAK-D RGB at ~10 Hz |
 | `/rgbd_camera/depth_image` | `sensor_msgs/Image` | sim → detector | Depth, same rate |
@@ -177,11 +192,11 @@ natural_nav_ws/
 `.env` (gitignored — copy from `.env.example`):
 
 ```bash
-LLM_PROVIDER=xai            # xai | ollama | anthropic | openai
-LLM_MODEL=grok-4.3
-LLM_API_KEY=sk-...          # leave blank for ollama
+LLM_PROVIDER=ollama         # ollama | anthropic | openai | xai
+LLM_MODEL=qwen2.5:3b        # match the provider (e.g. claude-opus-4-8 for anthropic)
+LLM_API_KEY=                # leave blank for ollama; required for cloud providers
 OLLAMA_HOST=http://localhost:11434
-LLM_BASE_URL=               # only needed to override OpenAI-compatible endpoint
+LLM_BASE_URL=               # only needed to override the OpenAI-compatible endpoint
 ```
 
 The `llm_client.py` factory picks the right client + auto-defaults the base URL for `xai`.

@@ -3,10 +3,11 @@ Provider-agnostic LLM client. Returns a callable that takes a system prompt and
 user message, and returns the model's text response.
 
 Configured via environment / ROS params:
-  LLM_PROVIDER  — 'anthropic', 'openai', or 'ollama'
+  LLM_PROVIDER  — 'anthropic', 'openai', 'xai', or 'ollama'
   LLM_API_KEY   — API key (not needed for ollama)
-  LLM_MODEL     — model name (e.g. claude-sonnet-4-6, gpt-4o, qwen2.5:3b)
+  LLM_MODEL     — model name (e.g. claude-opus-4-8, gpt-4o, grok-4.3, qwen2.5:3b)
   OLLAMA_HOST   — ollama server URL (default http://localhost:11434)
+  LLM_BASE_URL  — override the OpenAI-compatible endpoint (openai/xai)
 """
 
 from __future__ import annotations
@@ -104,7 +105,7 @@ def get_client(
     base_url = os.environ.get('LLM_BASE_URL', '') or None
 
     if provider == 'anthropic':
-        return AnthropicClient(api_key, model or 'claude-sonnet-4-6')
+        return AnthropicClient(api_key, model or 'claude-opus-4-8')
     if provider == 'openai':
         return OpenAIClient(api_key, model or 'gpt-4o', base_url)
     if provider == 'xai':
