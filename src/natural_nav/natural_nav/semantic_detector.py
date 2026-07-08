@@ -128,6 +128,8 @@ class SemanticDetectorNode(Node):
             String, '/natural_nav/semantic_map', 10)
         self._detections_pub = self.create_publisher(
             String, '/natural_nav/detections', 10)
+        self._annotated_pub = self.create_publisher(
+            Image, '/natural_nav/detections_image', 10)
 
         self._load_model()
 
@@ -210,6 +212,9 @@ class SemanticDetectorNode(Node):
                 return
 
             detections = self._detect(rgb)
+            # Always publish annotated image (even with zero detections) so the
+            # viewer shows the live camera feed continuously.
+            self._publish_annotated(rgb, detections, rgb_header)
             if not detections:
                 return
 
@@ -333,6 +338,29 @@ class SemanticDetectorNode(Node):
             'detections': detections,
         })
         self._detections_pub.publish(msg)
+
+    def _publish_annotated(self, rgb: np.ndarray, detections: list[dict], header):
+        """Republish the RGB frame with bbox + label overlays for visual debug."""
+        import cv2
+        annotated = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+        h, w = annotated.shape[:2]
+        for det in detections:
+            cx, cy, bw, bh = det['cx'], det['cy'], det['w_px'], det['h_px']
+            x0, y0 = max(0, cx - bw // 2), max(0, cy - bh // 2)
+            x1, y1 = min(w - 1, cx + bw // 2), min(h - 1, cy + bh // 2)
+            color = (0, 255, 0)
+            cv2.rectangle(annotated, (x0, y0), (x1, y1), color, 2)
+            text = f"{det['label']} {det['score']:.2f}"
+            (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+            cv2.rectangle(annotated, (x0, y0 - th - 4), (x0 + tw, y0), color, -1)
+            cv2.putText(annotated, text, (x0, y0 - 2),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+        try:
+            out_msg = self._bridge.cv2_to_imgmsg(annotated, encoding='bgr8')
+            out_msg.header = header
+            self._annotated_pub.publish(out_msg)
+        except Exception as e:
+            self.get_logger().warn(f'annotated image publish failed: {e}')
 
 
 def main(args=None):
