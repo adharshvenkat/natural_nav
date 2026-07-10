@@ -4,11 +4,11 @@
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![ROS 2 Jazzy](https://img.shields.io/badge/ROS%202-Jazzy-blue.svg)](https://docs.ros.org/en/jazzy/)
 
-**Language-conditioned semantic navigation on a single mobile robot.**
+**Turns plain-English commands into robot navigation via open-vocabulary perception and LLM-driven replanning.**
 
-> *"Go inspect the shelf next to the pallet."*
+> *"Go check the pallet, then head to the forklift."*
 
-NaturalNav takes a natural-language command, decomposes it with an LLM into a structured task graph, and dispatches navigation goals to a TurtleBot4 in a Gazebo warehouse. Task targets aren't hardcoded coordinates: they're resolved through an **open-vocabulary semantic map** the robot builds online from its RGBD camera using GroundingDINO. The full stack (Gazebo, Nav2, perception, and LLM planning) is fully Dockerized with GPU passthrough.
+NaturalNav takes a natural-language command, decomposes it with an LLM into a structured task graph, and dispatches Nav2 navigation goals. Task targets aren't hardcoded coordinates: they're resolved through an **open-vocabulary semantic map** the robot builds online from its RGBD camera using GroundingDINO. The stack is Nav2-based and platform-agnostic in principle; today it's validated against a TurtleBot4 in a Gazebo warehouse, fully Dockerized with GPU passthrough.
 
 ---
 
@@ -29,45 +29,9 @@ NaturalNav takes a natural-language command, decomposes it with an LLM into a st
 
 ## Architecture
 
-```
-                      natural language command
-                                │
-                                │  /natural_nav/command
-                                ▼
-                      ┌──────────────────┐
-                      │   llm_planner    │  LLM → JSON task graph
-                      └────────┬─────────┘
-                               │  /natural_nav/task_graph
-                               ▼
-   /natural_nav/semantic_map  ┌──────────────────┐  /natural_nav/fleet_status
-   (label → pose, JSON)  ────►│  task_executor   │──────► (status snapshots)
-                              │                  │
-                              │  - walks DAG     │  /natural_nav/replan_request
-                              │  - resolves      │──────► (on UNRESOLVABLE)
-                              │    label via map │
-                              │  - dispatches    │
-                              │    Nav2 goals    │
-                              └────────┬─────────┘
-                                       │  /navigate_to_pose (action)
-                                       ▼
-                              ┌──────────────────┐
-                              │      Nav2        │  AMCL on warehouse map
-                              │ planner+ctrl+BT  │  → TurtleBot4 in Gazebo
-                              └──────────────────┘
+Full system diagram, component breakdown, interfaces, assumptions, and known failure modes: [`docs/architecture.md`](docs/architecture.md)
 
-   RGB + depth + camera_info + TF        ┌──────────────────────┐
-   ─────────────────────────────────────►│  semantic_detector   │
-   from TB4's OAK-D camera               │                      │
-                                         │  GroundingDINO →     │
-                                         │  bbox+label → unproj │
-                                         │  pixel via depth →   │
-                                         │  TF to map frame →   │
-                                         │  semantic_map        │
-                                         └──────────┬───────────┘
-                                                    │
-                                                    │ /natural_nav/semantic_map
-                                                    └──────────► (feeds executor)
-```
+![System architecture overview](docs/assets/architecture-overview.svg)
 
 Sim, Nav2, and RViz come from Nav2's `tb4_simulation_launch.py`. The perception and LLM nodes are layered on top.
 
@@ -130,8 +94,10 @@ In another terminal:
 ```bash
 docker exec -it nn bash -c "source /opt/ros/jazzy/setup.bash && \
   ros2 topic pub --once /natural_nav/command std_msgs/msg/String \
-  '{data: \"Inspect the shelf and report what you see\"}'"
+  '{data: \"Go to the pallet, then navigate to the forklift\"}'"
 ```
+
+This decomposes into a two-task DAG (`navigate → pallet`, then `navigate → forklift` with `depends_on` the first), showcasing the executor's dependency-ordered dispatch rather than a single flat goal.
 
 ### Watch what's happening
 
@@ -151,6 +117,9 @@ natural_nav/
 ├── .env.example               # LLM provider / model / API key template
 ├── scripts/setup_ollama.sh    # Pull the local LLM into the ollama volume
 ├── docker/entrypoint.sh       # Sources ROS2 + workspace on container start
+├── docs/
+│   ├── architecture.md        # System design: components, interfaces, assumptions, failure modes
+│   └── assets/                # Diagram source (.excalidraw) + exported SVG
 └── src/natural_nav/
     ├── natural_nav/
     │   ├── llm_client.py          # Provider-agnostic LLM factory (xai/ollama/anthropic/openai)
@@ -212,16 +181,9 @@ The `llm_client.py` factory picks the right client + auto-defaults the base URL 
 
 ## Roadmap
 
-- [x] Containerized GPU-enabled stack (multi-stage, NVIDIA runtime)
-- [x] Sim + TB4 + Nav2 in warehouse, full reference stack
-- [x] Provider-agnostic LLM planner with structured JSON output
-- [x] Task executor with Nav2 action client + DAG walk + replan requests
-- [x] In-memory semantic map (label → pose, snapshot serialization)
-- [x] **Semantic detector: GroundingDINO + depth-to-map projection** (projection extracted to `projection.py`, hardened against depth holes, unit-tested)
-- [x] Planner subscription to `/natural_nav/replan_request` (close the loop)
-- [ ] End-to-end validation in the GPU warehouse sim (map populates → command → nav → replan)
-- [ ] Demo video / GIF
-- [ ] Rename `fleet_orchestrator.py` → `task_executor.py` (cosmetic; deferred to avoid churn)
+**Built and wired end-to-end:** containerized GPU stack, Gazebo/TB4/Nav2 warehouse sim, provider-agnostic LLM planner, task executor (Nav2 dispatch + DAG walk + replan requests), in-memory semantic map, GroundingDINO-based semantic detector with depth-to-map projection, and the planner ↔ executor replan loop.
+
+Open work, known gaps, and planned improvements are tracked in [GitHub Issues](https://github.com/adharshvenkat/natural_nav/issues).
 
 ---
 
