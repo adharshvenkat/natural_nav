@@ -29,11 +29,15 @@ NaturalNav takes a natural-language command, decomposes it with an LLM into a st
 
 ## Architecture
 
-Full system diagram, component breakdown, interfaces, assumptions, and known failure modes: [`docs/architecture.md`](docs/architecture.md)
+Full system diagram, component breakdown, and interfaces: [`docs/architecture.md`](docs/architecture.md)
 
 ![System architecture overview](docs/assets/architecture-overview.svg)
 
 Sim, Nav2, and RViz come from Nav2's `tb4_simulation_launch.py`. The perception and LLM nodes are layered on top.
+
+Assumptions and known failure modes: [`docs/limitations.md`](docs/limitations.md)
+
+Evaluation methodology and per-layer metrics: [`docs/evaluation.md`](docs/evaluation.md)
 
 ---
 
@@ -118,7 +122,9 @@ natural_nav/
 ├── scripts/setup_ollama.sh    # Pull the local LLM into the ollama volume
 ├── docker/entrypoint.sh       # Sources ROS2 + workspace on container start
 ├── docs/
-│   ├── architecture.md        # System design: components, interfaces, assumptions, failure modes
+│   ├── architecture.md        # System design: components, interfaces
+│   ├── limitations.md         # Assumptions, known failure modes
+│   ├── evaluation.md          # Evaluation methodology, per-layer metrics
 │   └── assets/                # Diagram source (.excalidraw) + exported SVG
 └── src/natural_nav/
     ├── natural_nav/
